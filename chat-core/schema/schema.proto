@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package protobuf_schema;
+
+message Entity {
+  int64 timestamp = 1;
+  oneof kind {
+    Handshake handshake = 2;
+    Registration registration = 3;
+    Authentication authentication = 4;
+    Message message = 5;
+  }
+}
+
+message Handshake { string pub_key = 1; }
+
+message Registration {
+  message Request {
+    string username = 1;
+    string password = 2;
+  }
+  message Response {
+    enum Status {
+      Success = 0;
+      UserExists = 1;
+    }
+    Status status = 1;
+  }
+  oneof kind {
+    Request request = 1;
+    Response response = 2;
+  }
+}
+
+message Authentication {
+  message Request {
+    string username = 1;
+    string password = 2;
+  }
+  message Response {
+    enum Status {
+      Success = 0;
+      UserDoesNotExist = 1;
+      WrongPassword = 2;
+    }
+    Status status = 1;
+  }
+  oneof kind {
+    Request request = 1;
+    Response response = 2;
+  }
+}
+
+message Message {
+  string sender = 1;
+  string text = 2;
+}
