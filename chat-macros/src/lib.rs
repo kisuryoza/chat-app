@@ -1,6 +1,12 @@
-extern crate proc_macro2;
-extern crate quote;
-extern crate syn;
+#![warn(
+    clippy::all,
+    // clippy::nursery,
+    // clippy::pedantic,
+    missing_debug_implementations,
+    // missing_docs,
+    rust_2018_idioms,
+    unreachable_pub
+)]
 
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput};

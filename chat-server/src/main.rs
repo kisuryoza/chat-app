@@ -1,6 +1,12 @@
-#![warn(clippy::all)]
-// #![warn(clippy::nursery)]
-// #![warn(clippy::pedantic)]
+#![warn(
+    clippy::all,
+    // clippy::nursery,
+    // clippy::pedantic,
+    missing_debug_implementations,
+    // missing_docs,
+    rust_2018_idioms,
+    unreachable_pub
+)]
 
 use std::{net::SocketAddr, sync::Arc};
 

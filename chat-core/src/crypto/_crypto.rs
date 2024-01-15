@@ -5,7 +5,8 @@ use rand_core::OsRng;
 
 use super::{CryptoSchema, Error, PublicKey, Result, SecretKey, SharedSecret, Then};
 
-#[derive(Default, Clone, Copy)]
+#[non_exhaustive]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Crypto;
 
 unsafe impl Sync for Crypto {}
@@ -95,5 +96,21 @@ impl CryptoSchema for Crypto {
             .then(|f| f.finalize());
 
         SharedSecret::new(*hashed.as_bytes())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_send() {
+        fn assert_send<T: Send>() {}
+        assert_send::<Crypto>();
+    }
+    #[test]
+    fn test_sync() {
+        fn assert_sync<T: Sync>() {}
+        assert_sync::<Crypto>();
     }
 }

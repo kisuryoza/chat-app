@@ -16,6 +16,9 @@ pub enum Error {
     Shutdown,
 }
 
+unsafe impl Sync for Error {}
+unsafe impl Send for Error {}
+
 impl Error {
     pub fn generic<T: ToString>(msg: T) -> Self {
         Self::Generic(msg.to_string())

@@ -15,7 +15,11 @@ use crate::{
 
 type Stream = FramedWrite<OwnedWriteHalf, BytesCodec>;
 
-pub async fn send(mut sink: Stream, mut client: Client, comm: ThreadCommunication) -> Result<()> {
+pub(crate) async fn send(
+    mut sink: Stream,
+    mut client: Client,
+    comm: ThreadCommunication,
+) -> Result<()> {
     let thread = tokio::spawn(async move {
         loop {
             match select(&mut sink, &mut client, &comm).await {
@@ -60,13 +64,13 @@ async fn process_input(
         Cli::Quit => return Err(Error::Shutdown),
         Cli::Text(text) => {
             let text = construct_text(client, text.as_ref())?;
-            EventBuilder::construct(client.event(), client.crypto())
+            EventBuilder::construct(client.event().clone(), client.crypto())
                 .message(client.username(), &text)
                 .encrypt(client.shared_secret())?
         }
         Cli::Handshake => {
             let key = create_keys(client, comm)?;
-            EventBuilder::construct(client.event(), client.crypto())
+            EventBuilder::construct(client.event().clone(), client.crypto())
                 .handshake(&key)
                 .encrypt(client.shared_secret())?
         }
@@ -85,7 +89,7 @@ async fn on_recieve_from_recieve_thread(
     let event = match session_secret {
         SessionSecret::None | SessionSecret::PendingForShared(_) => unreachable!(),
         SessionSecret::PendingToSend(public_key) => {
-            EventBuilder::construct(client.event(), client.crypto())
+            EventBuilder::construct(client.event().clone(), client.crypto())
                 .handshake(&public_key)
                 .encrypt(client.shared_secret())?
         }

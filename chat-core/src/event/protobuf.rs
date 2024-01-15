@@ -2,16 +2,21 @@ use super::types;
 use crate::prelude::*;
 
 mod _protobuf {
+    #![allow(missing_debug_implementations, unreachable_pub)]
     include!(concat!(env!("OUT_DIR"), "/protobuf_schema.rs"));
 }
 
-#[derive(Default, Clone, Copy)]
+#[non_exhaustive]
+#[derive(Debug, Default, Clone)]
 pub struct Protobuf;
+
+unsafe impl Sync for Protobuf {}
+unsafe impl Send for Protobuf {}
 
 impl EventSchema for Protobuf {}
 
 impl Serializable for Protobuf {
-    fn serialize(&self, entity: types::Entity) -> Vec<u8> {
+    fn serialize(&self, entity: types::Entity<'_>) -> Vec<u8> {
         use prost::Message;
 
         let kind = match entity.kind() {
@@ -32,7 +37,7 @@ impl Serializable for Protobuf {
         buf
     }
 
-    fn deserialize(&self, bytes: &[u8]) -> Result<types::Entity> {
+    fn deserialize(&self, bytes: &[u8]) -> Result<types::Entity<'_>> {
         use _protobuf::entity::Kind;
         use prost::Message;
         use std::io::Cursor;
@@ -59,14 +64,14 @@ mod serialize {
     use super::{Encodable, _protobuf, types};
     use _protobuf::entity::Kind;
 
-    pub fn handshake(kind: &types::Handshake) -> Kind {
+    pub(crate) fn handshake(kind: &types::Handshake) -> Kind {
         let a = _protobuf::Handshake {
             pub_key: kind.pub_key().encode(),
         };
         Kind::Handshake(a)
     }
 
-    pub fn registration(kind: &types::Registration<'_>) -> Kind {
+    pub(crate) fn registration(kind: &types::Registration<'_>) -> Kind {
         let kind = match kind {
             types::Registration::Request(inner) => {
                 let req = _protobuf::registration::Request {
@@ -86,7 +91,7 @@ mod serialize {
         Kind::Registration(a)
     }
 
-    pub fn authentication(kind: &types::Authentication<'_>) -> Kind {
+    pub(crate) fn authentication(kind: &types::Authentication<'_>) -> Kind {
         let kind = match kind {
             types::Authentication::Request(inner) => {
                 let req = _protobuf::authentication::Request {
@@ -106,7 +111,7 @@ mod serialize {
         Kind::Authentication(a)
     }
 
-    pub fn message(kind: &types::Message<'_>) -> Kind {
+    pub(crate) fn message(kind: &types::Message<'_>) -> Kind {
         let a = _protobuf::Message {
             sender: kind.sender().to_owned(),
             text: kind.text().to_owned(),
@@ -118,12 +123,12 @@ mod serialize {
 mod deserialize {
     use super::{Encodable, Error, EventKind, PublicKey, Result, Then, _protobuf, types};
 
-    pub fn handshake<'a>(kind: _protobuf::Handshake) -> Result<EventKind<'a>> {
+    pub(crate) fn handshake<'a>(kind: _protobuf::Handshake) -> Result<EventKind<'a>> {
         let pub_key = kind.pub_key.then(PublicKey::try_decode)?;
         Ok(EventKind::Handshake(types::Handshake::new(pub_key)))
     }
 
-    pub fn registration<'a>(kind: _protobuf::Registration) -> Result<EventKind<'a>> {
+    pub(crate) fn registration<'a>(kind: _protobuf::Registration) -> Result<EventKind<'a>> {
         let kind = kind
             .kind
             .ok_or_else(|| Error::decode("Bad event structure"))?;
@@ -144,7 +149,7 @@ mod deserialize {
         Ok(EventKind::Registration(a))
     }
 
-    pub fn authentication<'a>(kind: _protobuf::Authentication) -> Result<EventKind<'a>> {
+    pub(crate) fn authentication<'a>(kind: _protobuf::Authentication) -> Result<EventKind<'a>> {
         let kind = kind
             .kind
             .ok_or_else(|| Error::decode("Bad event structure"))?;
@@ -165,7 +170,7 @@ mod deserialize {
         Ok(EventKind::Authentication(a))
     }
 
-    pub fn message<'a>(kind: _protobuf::Message) -> EventKind<'a> {
+    pub(crate) fn message<'a>(kind: _protobuf::Message) -> EventKind<'a> {
         let sender = kind.sender;
         let text = kind.text;
         EventKind::Message(types::Message::new(sender.into(), text.into()))
@@ -177,6 +182,16 @@ impl Constructable for Protobuf {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_send() {
+        fn assert_send<T: Send>() {}
+        assert_send::<Protobuf>();
+    }
+    #[test]
+    fn test_sync() {
+        fn assert_sync<T: Sync>() {}
+        assert_sync::<Protobuf>();
+    }
     #[test]
     fn handshake() {
         crate::event::tests::handshake(Protobuf);

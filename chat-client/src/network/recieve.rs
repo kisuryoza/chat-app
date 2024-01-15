@@ -12,7 +12,7 @@ use crate::types::{Client, SessionSecret, ThreadCommunication};
 
 type Stream = FramedRead<OwnedReadHalf, BytesCodec>;
 
-pub async fn recieve(
+pub(crate) async fn recieve(
     mut stream: Stream,
     mut client: Client,
     comm: ThreadCommunication,
@@ -54,7 +54,7 @@ fn process_recieved(
     client: &mut Client,
     comm: &ThreadCommunication,
 ) -> Result<()> {
-    let deconstructed = EventBuilder::deconstruct(client.event(), client.crypto())
+    let deconstructed = EventBuilder::deconstruct(client.event().clone(), client.crypto())
         .decrypt(client.shared_secret(), recieved)?;
     let deserialized = deconstructed.deserialize()?;
 
@@ -113,7 +113,7 @@ fn make_established_and_share(
 fn process_message(
     client: &Client,
     timestamp: i64,
-    event: &chat_core::event::Message,
+    event: &chat_core::event::Message<'_>,
 ) -> Result<()> {
     let text: Cow<'_, str> =
         if let SessionSecret::Established(shared_secret) = client.session_secret() {

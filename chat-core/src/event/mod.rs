@@ -13,8 +13,8 @@ pub use types::*;
 pub trait EventSchema: Serializable + Constructable {}
 
 pub trait Serializable {
-    fn serialize(&self, entity: Entity) -> Vec<u8>;
-    fn deserialize(&self, bytes: &[u8]) -> Result<Entity>;
+    fn serialize(&self, entity: Entity<'_>) -> Vec<u8>;
+    fn deserialize(&self, bytes: &[u8]) -> Result<Entity<'_>>;
 }
 
 pub trait Constructable: Serializable {
@@ -90,39 +90,39 @@ pub(crate) mod tests {
     static SENDER: &str = "Meme";
     static TEXT: &str = "Lorem ipsum dolor sit amet, qui minim labore adipisicing minim sint cillum sint consectetur cupidatat.";
 
-    pub fn handshake<E: EventSchema + Copy>(event: E) {
+    pub(crate) fn handshake<E: EventSchema + Clone>(event: E) {
         let entity = event.construct_handshake(&PUB_KEY);
         let serialized = event.serialize(entity);
-        handle_serialized(event, &serialized).unwrap();
+        handle_serialized(event.clone(), &serialized).unwrap();
     }
 
-    pub fn registration<E: EventSchema + Copy>(event: E) {
+    pub(crate) fn registration<E: EventSchema + Clone>(event: E) {
         let entity = event.construct_registration_request(USERNAME, PASSWORD);
         let serialized = event.serialize(entity);
-        handle_serialized(event, &serialized).unwrap();
+        handle_serialized(event.clone(), &serialized).unwrap();
 
         let entity = event.construct_registration_response(REGI_STATUS);
         let serialized = event.serialize(entity);
-        handle_serialized(event, &serialized).unwrap();
+        handle_serialized(event.clone(), &serialized).unwrap();
     }
 
-    pub fn authentication<E: EventSchema + Copy>(event: E) {
+    pub(crate) fn authentication<E: EventSchema + Clone>(event: E) {
         let entity = event.construct_authentication_request(USERNAME, PASSWORD);
         let serialized = event.serialize(entity);
-        handle_serialized(event, &serialized).unwrap();
+        handle_serialized(event.clone(), &serialized).unwrap();
 
         let entity = event.construct_authentication_response(AUTH_STATUS);
         let serialized = event.serialize(entity);
-        handle_serialized(event, &serialized).unwrap();
+        handle_serialized(event.clone(), &serialized).unwrap();
     }
 
-    pub fn message<E: EventSchema + Copy>(event: E) {
+    pub(crate) fn message<E: EventSchema + Clone>(event: E) {
         let entity = event.construct_message(SENDER, TEXT);
         let serialized = event.serialize(entity);
-        handle_serialized(event, &serialized).unwrap();
+        handle_serialized(event.clone(), &serialized).unwrap();
     }
 
-    fn handle_serialized<E: EventSchema + Copy>(event: E, serialized: &[u8]) -> Result<()> {
+    fn handle_serialized<E: EventSchema + Clone>(event: E, serialized: &[u8]) -> Result<()> {
         let deserialized = event.deserialize(serialized)?;
         match deserialized.kind() {
             EventKind::Handshake(kind) => handle_handshake(kind),

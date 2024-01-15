@@ -1,7 +1,7 @@
 use chat_core::prelude::*;
 
 #[derive(Clone)]
-pub struct Client {
+pub(crate) struct Client {
     username: String,
     password: String,
     event: Capnp,
@@ -15,45 +15,45 @@ pub struct Client {
 }
 
 impl Client {
-    pub const fn new(username: String, password: String) -> Self {
+    pub(crate) fn new(username: String, password: String) -> Self {
         Self {
             username,
             password,
-            event: Capnp,
-            crypto: Crypto,
+            event: Capnp::default(),
+            crypto: Crypto::default(),
             server_secret: None,
             session_secret: SessionSecret::None,
         }
     }
 
-    pub fn username(&self) -> &str {
+    pub(crate) fn username(&self) -> &str {
         self.username.as_ref()
     }
-    pub fn password(&self) -> &str {
+    pub(crate) fn password(&self) -> &str {
         self.password.as_ref()
     }
-    pub const fn event(&self) -> Capnp {
-        self.event
+    pub(crate) const fn event(&self) -> &Capnp {
+        &self.event
     }
-    pub const fn crypto(&self) -> Crypto {
+    pub(crate) const fn crypto(&self) -> Crypto {
         self.crypto
     }
-    pub fn shared_secret(&self) -> &SharedSecret {
+    pub(crate) fn shared_secret(&self) -> &SharedSecret {
         self.server_secret.as_ref().unwrap()
     }
-    pub fn set_shared_secret(&mut self, shared_secret: SharedSecret) {
+    pub(crate) fn set_shared_secret(&mut self, shared_secret: SharedSecret) {
         self.server_secret = Some(shared_secret);
     }
-    pub const fn session_secret(&self) -> &SessionSecret {
+    pub(crate) const fn session_secret(&self) -> &SessionSecret {
         &self.session_secret
     }
-    pub fn set_session_secret(&mut self, state: SessionSecret) {
+    pub(crate) fn set_session_secret(&mut self, state: SessionSecret) {
         self.session_secret = state;
     }
 }
 
 #[derive(Clone)]
-pub enum SessionSecret {
+pub(crate) enum SessionSecret {
     None,
     PendingForShared(SecretKey),
     PendingToSend(PublicKey),
@@ -71,13 +71,13 @@ impl std::fmt::Display for SessionSecret {
     }
 }
 
-pub struct ThreadCommunication {
-    pub tx: flume::Sender<SessionSecret>,
-    pub rx: flume::Receiver<SessionSecret>,
+pub(crate) struct ThreadCommunication {
+    pub(crate) tx: flume::Sender<SessionSecret>,
+    pub(crate) rx: flume::Receiver<SessionSecret>,
 }
 
 impl ThreadCommunication {
-    pub fn new() -> (Self, Self) {
+    pub(crate) fn new() -> (Self, Self) {
         let (tx1, rx1) = flume::unbounded::<SessionSecret>();
         let (tx2, rx2) = flume::unbounded::<SessionSecret>();
 

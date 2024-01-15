@@ -3,7 +3,7 @@ use std::sync::Arc;
 use chat_core::prelude::*;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum Cli {
+pub(crate) enum Cli {
     Quit,
     Login,
     Register,
@@ -11,7 +11,7 @@ pub enum Cli {
     Text(Arc<str>),
 }
 
-pub fn ask_for_command() -> Result<Cli> {
+pub(crate) fn ask_for_command() -> Result<Cli> {
     println!("Commands:");
     println!("          ':q'");
     println!("          ':login'");
@@ -26,7 +26,7 @@ pub fn ask_for_command() -> Result<Cli> {
     }
 }
 
-pub fn process_input() -> Result<Cli> {
+pub(crate) fn process_input() -> Result<Cli> {
     let input = read_input()?;
 
     if !input.starts_with(':') {
@@ -50,7 +50,7 @@ fn read_input() -> Result<Arc<str>> {
     Ok(input)
 }
 
-pub fn ask_for_credentials() -> Result<(String, String)> {
+pub(crate) fn ask_for_credentials() -> Result<(String, String)> {
     println!("Enter username:");
     let username = read_input()?;
 

@@ -4,12 +4,16 @@ use super::types;
 use crate::prelude::*;
 
 mod schema_capnp {
-    #![allow(unused)]
+    #![allow(dead_code, missing_debug_implementations, unreachable_pub)]
     include!(concat!(env!("OUT_DIR"), "/schema_capnp.rs"));
 }
 
-#[derive(Default, Clone, Copy)]
+#[non_exhaustive]
+#[derive(Debug, Default, Clone)]
 pub struct Capnp;
+
+unsafe impl Sync for Capnp {}
+unsafe impl Send for Capnp {}
 
 impl From<capnp::Error> for crate::error::Error {
     fn from(value: capnp::Error) -> Self {
@@ -26,9 +30,9 @@ impl From<capnp::NotInSchema> for crate::error::Error {
 impl EventSchema for Capnp {}
 
 impl Serializable for Capnp {
-    fn serialize(&self, entity: types::Entity) -> Vec<u8> {
+    fn serialize(&self, entity: types::Entity<'_>) -> Vec<u8> {
         let mut message = capnp::message::Builder::new_default();
-        let mut capnp_entity = message.init_root::<schema_capnp::entity::Builder>();
+        let mut capnp_entity = message.init_root::<schema_capnp::entity::Builder<'_>>();
         capnp_entity.set_timestamp(super::timestamp());
         let mut capnp_kind = capnp_entity.init_kind();
 
@@ -44,12 +48,12 @@ impl Serializable for Capnp {
         buf
     }
 
-    fn deserialize(&self, bytes: &[u8]) -> Result<types::Entity> {
+    fn deserialize(&self, bytes: &[u8]) -> Result<types::Entity<'_>> {
         use schema_capnp::entity::kind::Which;
 
         let message_reader =
             serialize_packed::read_message(bytes, capnp::message::ReaderOptions::new())?;
-        let capnp_entity = message_reader.get_root::<schema_capnp::entity::Reader>()?;
+        let capnp_entity = message_reader.get_root::<schema_capnp::entity::Reader<'_>>()?;
         let timestamp = capnp_entity.get_timestamp();
         let kind = capnp_entity.get_kind().which()?;
 
@@ -68,14 +72,14 @@ mod serialize {
     use super::{schema_capnp, types, Encodable};
     use schema_capnp::entity::kind::Builder;
 
-    pub fn handshake(capnp_kind: &mut Builder<'_>, kind: &types::Handshake) {
+    pub(crate) fn handshake(capnp_kind: &mut Builder<'_>, kind: &types::Handshake) {
         let mut capnp_kind = capnp_kind.reborrow().init_handshake();
 
         let pub_key = kind.pub_key().encode();
         capnp_kind.set_pub_key(pub_key.as_str().into());
     }
 
-    pub fn registration(capnp_kind: &mut Builder<'_>, kind: &types::Registration<'_>) {
+    pub(crate) fn registration(capnp_kind: &mut Builder<'_>, kind: &types::Registration<'_>) {
         let capnp_kind = capnp_kind.reborrow().init_registration().init_kind();
         match kind {
             types::Registration::Request(inner) => {
@@ -101,7 +105,7 @@ mod serialize {
         }
     }
 
-    pub fn authentication(capnp_kind: &mut Builder<'_>, kind: &types::Authentication<'_>) {
+    pub(crate) fn authentication(capnp_kind: &mut Builder<'_>, kind: &types::Authentication<'_>) {
         let capnp_kind = capnp_kind.reborrow().init_authentication().init_kind();
         match kind {
             types::Authentication::Request(inner) => {
@@ -130,7 +134,7 @@ mod serialize {
         }
     }
 
-    pub fn message(capnp_kind: &mut Builder<'_>, kind: &types::Message<'_>) {
+    pub(crate) fn message(capnp_kind: &mut Builder<'_>, kind: &types::Message<'_>) {
         let mut capnp_kind = capnp_kind.reborrow().init_message();
 
         let sender = kind.sender();
@@ -143,7 +147,9 @@ mod serialize {
 mod deserialize {
     use super::{schema_capnp, types, Encodable, Error, EventKind, PublicKey, Result, Then};
 
-    pub fn handshake<'a>(inner: schema_capnp::handshake::Reader<'_>) -> Result<EventKind<'a>> {
+    pub(crate) fn handshake<'a>(
+        inner: schema_capnp::handshake::Reader<'_>,
+    ) -> Result<EventKind<'a>> {
         let pub_key = inner
             .get_pub_key()?
             .as_bytes()
@@ -151,7 +157,7 @@ mod deserialize {
         Ok(EventKind::Handshake(types::Handshake::new(pub_key)))
     }
 
-    pub fn registration<'a>(
+    pub(crate) fn registration<'a>(
         inner: schema_capnp::registration::Reader<'_>,
     ) -> Result<EventKind<'a>> {
         use schema_capnp::registration::{kind::Which, response};
@@ -177,7 +183,7 @@ mod deserialize {
         Ok(EventKind::Registration(regi))
     }
 
-    pub fn authentication<'a>(
+    pub(crate) fn authentication<'a>(
         inner: schema_capnp::authentication::Reader<'_>,
     ) -> Result<EventKind<'a>> {
         use schema_capnp::authentication::{kind::Which, response};
@@ -206,7 +212,7 @@ mod deserialize {
         Ok(EventKind::Authentication(regi))
     }
 
-    pub fn message<'a>(inner: schema_capnp::message::Reader<'_>) -> Result<EventKind<'a>> {
+    pub(crate) fn message<'a>(inner: schema_capnp::message::Reader<'_>) -> Result<EventKind<'a>> {
         let sender = inner.get_sender()?.to_string().map_err(Error::generic)?;
         let text = inner.get_text()?.to_string().map_err(Error::generic)?;
 
@@ -222,6 +228,16 @@ impl Constructable for Capnp {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_send() {
+        fn assert_send<T: Send>() {}
+        assert_send::<Capnp>();
+    }
+    #[test]
+    fn test_sync() {
+        fn assert_sync<T: Sync>() {}
+        assert_sync::<Capnp>();
+    }
     #[test]
     fn handshake() {
         crate::event::tests::handshake(Capnp);

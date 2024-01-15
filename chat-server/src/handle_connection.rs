@@ -21,12 +21,12 @@ type Rx = mpsc::UnboundedReceiver<Vec<u8>>;
 /// message is received from a client, it is broadcasted to all peers by
 /// iterating over the `peers` entries and sending a copy of the message on each
 /// `Tx`.
-pub struct Shared {
+pub(crate) struct Shared {
     peers: HashMap<SocketAddr, Tx>,
 }
 
 impl Shared {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             peers: HashMap::new(),
         }
@@ -44,7 +44,7 @@ impl Shared {
 }
 
 /// The state for each connected client.
-pub struct Peer {
+pub(crate) struct Peer {
     stream: Framed<TcpStream, BytesCodec>,
 
     /// Receive half of the message channel.
@@ -73,16 +73,16 @@ impl Peer {
         })
     }
 
-    pub fn stream_mut(&mut self) -> &mut Framed<TcpStream, BytesCodec> {
+    pub(crate) fn stream_mut(&mut self) -> &mut Framed<TcpStream, BytesCodec> {
         &mut self.stream
     }
-    pub const fn shared_key(&self) -> &CryptoKey {
+    pub(crate) const fn shared_key(&self) -> &CryptoKey {
         &self.shared_key
     }
 }
 
 /// Process an individual client
-pub async fn process(
+pub(crate) async fn process(
     server: crate::types::Server,
     state: Arc<Mutex<Shared>>,
     tcp_stream: TcpStream,
@@ -90,7 +90,8 @@ pub async fn process(
 ) -> Result<()> {
     let mut stream = Framed::new(tcp_stream, BytesCodec::new());
 
-    let shared_key = chat_core::key_exchange(&mut stream, server.event(), server.crypto()).await?;
+    let shared_key =
+        chat_core::key_exchange(&mut stream, server.event().clone(), server.crypto()).await?;
     info!("Shared secret with {} was negotiated", addr);
     debug!(
         address = addr.to_string(),
@@ -107,7 +108,7 @@ pub async fn process(
         tokio::select! {
             // A message was received from some peer. Send it to the current peer.
             Some(msg) = peer.rx.recv() => {
-                let msg = CryptoSchema::encrypt(&Crypto, &peer.shared_key, &msg)?
+                let msg = CryptoSchema::encrypt(&server.crypto(), &peer.shared_key, &msg)?
                     .then(|e| bytes::BytesMut::from(e.as_slice()));
                 peer.stream.send(msg).await.map_err(Error::io)?;
             }
@@ -144,7 +145,7 @@ async fn on_recieve_from_curr_peer(
     recieved: bytes::BytesMut,
 ) -> Result<()> {
     let event = server.event();
-    let decrypted = Crypto.decrypt(peer.shared_key(), &recieved)?;
+    let decrypted = server.crypto().decrypt(peer.shared_key(), &recieved)?;
     let deserialized = event.deserialize(&decrypted)?;
 
     match deserialized.kind() {

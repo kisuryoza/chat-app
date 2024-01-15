@@ -1,6 +1,12 @@
-#![warn(clippy::all)]
-// #![warn(clippy::nursery)]
-// #![warn(clippy::pedantic)]
+#![warn(
+    clippy::all,
+    // clippy::nursery,
+    // clippy::pedantic,
+    missing_debug_implementations,
+    // missing_docs,
+    rust_2018_idioms,
+    unreachable_pub
+)]
 
 use futures::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
@@ -37,6 +43,7 @@ where
     type Ok: ?Sized;
     type Err: ?Sized;
 
+    #[must_use]
     fn on_err<F: FnOnce(&Self::Err)>(self, f: F) -> Self;
 }
 
@@ -55,6 +62,14 @@ impl<T, E> OnErr for Result<T, E> {
     }
 }
 
+/// Creates and exchanges public keys, then computes shared keys.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - Failed to send a public key.
+/// - Recieving is timeouted or channel is closed
+/// - Recieved data is not related to handshake
 pub async fn key_exchange<E, C>(
     stream: &mut Framed<TcpStream, BytesCodec>,
     event: E,
@@ -74,11 +89,7 @@ where
     let recieved = recieve(stream).await?;
 
     let deserialized = event.deserialize(&recieved)?;
-    let sender_public = if let EventKind::Handshake(a) = deserialized.kind() {
-        a.pub_key()
-    } else {
-        return Err(Error::decode("Excpected Handshake"));
-    };
+    let sender_public = deserialized.expect_handshake()?.pub_key();
 
     let shared_secret = crypto.compute_dh(key_pair.secret(), sender_public);
 

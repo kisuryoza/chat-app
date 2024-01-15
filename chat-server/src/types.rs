@@ -1,28 +1,28 @@
 use chat_core::prelude::*;
 
 #[derive(Clone)]
-pub struct Server {
+pub(crate) struct Server {
     event: Capnp,
     crypto: Crypto,
     db_pool: sqlx::PgPool,
 }
 
 impl Server {
-    pub const fn new(db_pool: sqlx::PgPool) -> Self {
+    pub(crate) fn new(db_pool: sqlx::PgPool) -> Self {
         Self {
-            event: Capnp,
-            crypto: Crypto,
+            event: Capnp::default(),
+            crypto: Crypto::default(),
             db_pool,
         }
     }
 
-    pub const fn event(&self) -> Capnp {
-        self.event
+    pub(crate) const fn event(&self) -> &Capnp {
+        &self.event
     }
-    pub const fn crypto(&self) -> Crypto {
+    pub(crate) const fn crypto(&self) -> Crypto {
         self.crypto
     }
-    pub const fn db_pool(&self) -> &sqlx::PgPool {
+    pub(crate) const fn db_pool(&self) -> &sqlx::PgPool {
         &self.db_pool
     }
 }

@@ -10,7 +10,7 @@ use chat_core::{
 
 use crate::handle_connection::Peer;
 
-pub async fn main(server: &crate::types::Server, peer: &mut Peer) -> Result<()> {
+pub(crate) async fn main(server: &crate::types::Server, peer: &mut Peer) -> Result<()> {
     let socker_addr = peer.stream_mut().get_ref().peer_addr().map_err(Error::io)?;
     let recieved = match peer.stream_mut().next().await {
         Some(Ok(bytes)) => bytes,
@@ -26,7 +26,8 @@ pub async fn main(server: &crate::types::Server, peer: &mut Peer) -> Result<()> 
     };
 
     let event = server.event();
-    let decrypted = Crypto.decrypt(peer.shared_key(), &recieved)?;
+    let crypto = server.crypto();
+    let decrypted = crypto.decrypt(peer.shared_key(), &recieved)?;
     let deserialized = event.deserialize(&decrypted)?;
 
     match deserialized.kind() {
@@ -42,7 +43,7 @@ pub async fn main(server: &crate::types::Server, peer: &mut Peer) -> Result<()> 
             };
             let status = register(server, req.username(), req.password()).await?;
 
-            let event = EventBuilder::construct(server.event(), Crypto)
+            let event = EventBuilder::construct(server.event().clone(), crypto)
                 .registration_response(status)
                 .encrypt(peer.shared_key())?
                 .then(|e| bytes::BytesMut::from(e.as_slice()));
@@ -65,7 +66,7 @@ pub async fn main(server: &crate::types::Server, peer: &mut Peer) -> Result<()> 
             };
             let status = authenticate(server, req.username(), req.password()).await?;
 
-            let event = EventBuilder::construct(server.event(), Crypto)
+            let event = EventBuilder::construct(server.event().clone(), crypto)
                 .authentication_response(status)
                 .encrypt(peer.shared_key())?
                 .then(|e| bytes::BytesMut::from(e.as_slice()));

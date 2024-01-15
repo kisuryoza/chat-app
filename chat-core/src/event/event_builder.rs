@@ -3,6 +3,7 @@ use crate::{
     prelude::*,
 };
 
+#[derive(Debug)]
 pub struct EventBuilder;
 
 impl EventBuilder {
@@ -34,17 +35,22 @@ impl EventBuilder {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct Constructing<E: EventSchema>(E);
+#[derive(Debug)]
 pub struct Constructed {
     bytes: Vec<u8>,
 }
 
+#[derive(Debug)]
 pub struct Deconstructing<E: EventSchema>(E);
+#[derive(Debug)]
 pub struct Decrypted<E: EventSchema> {
     event: E,
     bytes: Vec<u8>,
 }
 
+#[derive(Debug)]
 pub struct Builder<E, C> {
     state: E,
     crypto_system: C,

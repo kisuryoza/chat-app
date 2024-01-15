@@ -45,7 +45,7 @@ impl<'a> Entity<'a> {
         }
     }
 
-    pub fn expect_message(&'a self) -> Result<&Message> {
+    pub fn expect_message(&'a self) -> Result<&Message<'_>> {
         match *self.kind {
             EventKind::Message(ref inner) => Ok(inner),
             _ => Err(Error::decode("Bad event structure")),

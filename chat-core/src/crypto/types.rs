@@ -1,4 +1,7 @@
-use std::{fmt, ops::Deref};
+use std::{
+    fmt,
+    ops::{Deref, DerefMut},
+};
 
 use crate::{crypto::Encodable, prelude::*};
 
@@ -6,7 +9,7 @@ pub const CRYPTO_KEY_LENGTH: usize = 32;
 /// base64 url-safe encoded length
 // pub const CRYPTO_KEY_LENGTH_ENCODED: usize = 43;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CryptoKey {
     bytes: [u8; CRYPTO_KEY_LENGTH],
 }
@@ -25,6 +28,12 @@ impl Deref for CryptoKey {
     type Target = [u8; CRYPTO_KEY_LENGTH];
     fn deref(&self) -> &Self::Target {
         &self.bytes
+    }
+}
+
+impl DerefMut for CryptoKey {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.bytes
     }
 }
 
@@ -74,7 +83,15 @@ impl fmt::Display for CryptoKey {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+impl fmt::Debug for CryptoKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CryptoKey")
+            .field("bytes", &self.encode())
+            .finish()
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyPair {
     secret: SecretKey,
     public: PublicKey,
