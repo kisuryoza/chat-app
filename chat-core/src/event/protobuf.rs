@@ -10,9 +10,6 @@ mod _protobuf {
 #[derive(Debug, Default, Clone)]
 pub struct Protobuf;
 
-unsafe impl Sync for Protobuf {}
-unsafe impl Send for Protobuf {}
-
 impl EventSchema for Protobuf {}
 
 impl Serializable for Protobuf {

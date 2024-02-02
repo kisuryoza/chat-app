@@ -12,9 +12,6 @@ mod schema_capnp {
 #[derive(Debug, Default, Clone)]
 pub struct Capnp;
 
-unsafe impl Sync for Capnp {}
-unsafe impl Send for Capnp {}
-
 impl From<capnp::Error> for crate::error::Error {
     fn from(value: capnp::Error) -> Self {
         Self::decode(value)

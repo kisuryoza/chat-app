@@ -9,9 +9,6 @@ use super::{CryptoSchema, Error, PublicKey, Result, SecretKey, SharedSecret, The
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Crypto;
 
-unsafe impl Sync for Crypto {}
-unsafe impl Send for Crypto {}
-
 impl CryptoSchema for Crypto {
     fn encrypt(&self, key: &SecretKey, blob: &[u8]) -> Result<Vec<u8>> {
         let key = Key::from_slice(&**key);
